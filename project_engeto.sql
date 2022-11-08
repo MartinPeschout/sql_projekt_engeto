@@ -82,7 +82,63 @@ WHERE
 	czp.value_type_code  = 5958 AND
 	czp.payroll_year IN (2006,2018)
 GROUP BY czp.payroll_year, cpc.name;
+
+-- Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
+
+CREATE OR REPLACE VIEW v_czechia_price_avg_price_per_year AS
+	SELECT 
+		category_code,
+		AVG (value), 
+		YEAR (date_from)
+	FROM 
+		czechia_price
+	GROUP BY 
+		YEAR (date_from), category_code;
+
+SELECT
+		cp1.category_code,
+		cp1.`YEAR (date_from)`  year_basic,
+		cp2.`YEAR (date_from)`,
+		cp2.`YEAR (date_from)` + 1 year_prev,
+		cp1.`AVG (value)`,
+		cp2.`AVG (value)`,
+		round ((cp1.`AVG (value)` - cp2.`AVG (value)`)/cp2.`AVG (value)`*100, 2) price_growth
+	FROM 
+		v_czechia_price_avg_price_per_year cp1
+	JOIN 
+		v_czechia_price_avg_price_per_year cp2
+		ON cp1.category_code  = cp2.category_code 
+			AND cp1.`YEAR (date_from)` = cp2.`YEAR (date_from)` + 1
+	GROUP BY category_code , `YEAR (date_from)`;
 	
-
-
+CREATE OR REPLACE VIEW v_czechia_price_comparison_growth_per_code AS	
+SELECT
+		cp1.category_code code,
+		cp1.`YEAR (date_from)`  year_basic,
+		cp2.`YEAR (date_from)` start_year,
+		cp2.`YEAR (date_from)` + 1 year_prev,
+		cp1.`AVG (value)` AVG1,
+		cp2.`AVG (value)` AVG2,
+		round ((cp1.`AVG (value)` - cp2.`AVG (value)`)/cp2.`AVG (value)`*100, 2) price_growth
+		FROM 
+			v_czechia_price_avg_price_per_year cp1
+		JOIN 
+			v_czechia_price_avg_price_per_year cp2
+			ON cp1.category_code  = cp2.category_code 
+				AND cp1.`YEAR (date_from)` = cp2.`YEAR (date_from)` + 1
+		GROUP BY 
+			code, year_basic
+			
+SELECT 
+	cpg.code code_product,
+	cpc.name name_product,
+	SUM(price_growth) sum_growth
+FROM 
+	v_czechia_price_comparison_growth_per_code cpg
+JOIN 
+	czechia_price_category cpc
+ON 
+ 	cpg.code = cpc.code
+GROUP BY cpg.code
+ORDER BY sum_growth
 		
