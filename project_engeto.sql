@@ -140,5 +140,60 @@ JOIN
 ON 
  	cpg.code = cpc.code
 GROUP BY cpg.code
-ORDER BY sum_growth
+ORDER BY sum_growth;
 		
+-- Existuje rok, ve kterém byl meziroční nárůst cen potravin výrazně vyšší než růst mezd (větší než 10 %)?
+
+CREATE OR REPLACE VIEW v_czechia_price_growth_food_per_years AS
+SELECT
+	cpg.code code_product,
+	cpc.name name_product,
+	SUM(price_growth) sum_growth,
+	year_basic
+FROM 
+	v_czechia_price_comparison_growth_per_code cpg
+JOIN 
+	czechia_price_category cpc
+ON 
+ 	cpg.code = cpc.code
+GROUP BY cpg.code , cpg.year_basic
+ORDER BY cpg.year_basic;
+
+CREATE OR REPLACE VIEW v_czechia_price_total_growth_food_per_years AS
+SELECT 
+	year_basic,
+	round (avg(sum_growth),2) average_growth_price_food
+FROM v_czechia_price_growth_food_per_years 
+GROUP BY year_basic;
+
+
+CREATE OR REPLACE VIEW v_czechia_payroll_total_growth_per_years AS
+SELECT
+	cpay1.payroll_year basic_year,
+	cpay2.payroll_year+1 next_year,
+	cpay1.value basic_value,
+	LEAD (cpay2.value,1) OVER (ORDER BY cpay2.payroll_year) next_value,
+	round ((((LEAD (cpay2.value,1) OVER (ORDER BY cpay2.payroll_year)) - cpay1.value) / cpay1.value) * 100,2) payroll_growth
+FROM
+	czechia_payroll cpay1
+JOIN 
+	czechia_payroll cpay2
+	ON cpay1.id  = cpay2.id 
+WHERE
+	cpay1.value_type_code = 5958
+GROUP BY
+	cpay1.payroll_year;
+	
+
+SELECT
+	payroll.basic_year,
+	payroll.payroll_growth,
+	price.average_growth_price_food food_growth,
+	price.average_growth_price_food - payroll.payroll_growth difference_food_price
+FROM 
+	v_czechia_payroll_total_growth_per_years payroll
+RIGHT JOIN 
+	v_czechia_price_total_growth_food_per_years price
+ON 
+	payroll.basic_year = price.year_basic
+ORDER BY difference_food_price DESC;
