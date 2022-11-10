@@ -197,3 +197,31 @@ RIGHT JOIN
 ON 
 	payroll.basic_year = price.year_basic
 ORDER BY difference_food_price DESC;
+
+
+/* Má výška HDP vliv na změny ve mzdách a cenách potravin? Neboli, pokud HDP vzroste výrazněji v jednom roce, 
+projeví se to na cenách potravin či mzdách ve stejném nebo násdujícím roce výraznějším růstem */
+
+CREATE OR REPLACE VIEW v_czechia_GDP_total_growth_per_years AS
+SELECT
+	e1.`year` bacic_year,
+	e1.`year` + 1 next_year,
+	e1.GDP basic_GDP,
+	LEAD (e1.GDP,1) OVER (ORDER BY e1.`year`) next_GDP,
+	round((((LEAD (e1.GDP,1) OVER (ORDER BY e1.`year`))-e1.GDP) / e1.GDP ) * 100,2) GDP_growth
+FROM economies e1
+JOIN (SELECT * FROM economies WHERE country = 'Czech republic' AND GDP is not NULL) e2
+ON e1.`year`  = e2.`year`
+WHERE e1.country = 'Czech republic' AND e1.GDP is not NULL
+ORDER BY e1.`year`
+
+SELECT
+payroll.basic_year,
+GDP.GDP_growth,
+payroll.payroll_growth,
+price.average_growth_price_food price_growth
+FROM v_czechia_payroll_total_growth_per_years payroll
+RIGHT JOIN v_czechia_price_total_growth_food_per_years price
+ON payroll.basic_year = price.year_basic
+LEFT JOIN v_czechia_gdp_total_growth_per_years GDP
+ON payroll.basic_year = GDP.bacic_year
