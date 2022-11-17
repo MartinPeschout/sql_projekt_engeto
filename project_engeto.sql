@@ -1,26 +1,3 @@
-SELECT
-	*
-FROM
-	economies
-WHERE
-	country = 'czech republic';
-
-SELECT
-	*
-FROM
-	czechia_payroll cp
-JOIN czechia_payroll_calculation cpc 
-ON
-	cp.calculation_code = cpc.code
-JOIN czechia_payroll_unit cpu
-ON
-	cp.unit_code = cpu.code
-JOIN czechia_payroll_value_type cpvt
-ON
-	cp.value_type_code = cpvt.code
-JOIN czechia_payroll_industry_branch cpib
-ON
-	cp.industry_branch_code = cpib.code;
 
 
 -- Rostou v průběhu let mzdy ve všech odvětvích?
@@ -225,3 +202,42 @@ RIGHT JOIN v_czechia_price_total_growth_food_per_years price
 ON payroll.basic_year = price.year_basic
 LEFT JOIN v_czechia_gdp_total_growth_per_years GDP
 ON payroll.basic_year = GDP.bacic_year
+
+/* Tabulky pojmenujte t_{jmeno}_{prijmeni}_project_SQL_primary_final (pro data mezd a cen potravin
+ * za Českou republiku sjednocených na totožné porovnatelné období – společné roky)*/
+
+
+	CREATE OR REPLACE TABLE t_martin_peschout_project_SQL_primary_final AS
+	SELECT 
+		cp.category_code,
+		cp.value value1,
+		cp.date_from,
+		cp.region_code,
+		cpay.value,
+		cpay.payroll_year,
+		cpay.industry_branch_code,
+		cpay.value_type_code,
+		cpayib.name name1,
+		cpc.name,
+		cpc.price_unit 
+	FROM czechia_price AS cp
+	JOIN czechia_payroll AS cpay
+   ON YEAR(cp.date_from) = cpay.payroll_year AND
+   cpay.value_type_code = 5958
+  	LEFT JOIN czechia_payroll_industry_branch AS cpayib
+  	ON cpayib.code = cpay.industry_branch_code
+  	LEFT JOIN czechia_price_category AS cpc
+  	ON cp.category_code = cpc.code;
+  
+  /* t_martin_peschout_project_SQL_secondary_final (pro dodatečná data o dalších evropských státech) */
+  
+CREATE OR REPLACE table t_martin_peschout_project_SQL_secondary_final AS
+SELECT
+	country,
+	`year` bacic_year,
+	`year` + 1 next_year,
+	GDP basic_GDP,
+	LEAD (GDP,1) OVER (ORDER BY `year`) next_GDP,
+	round((((LEAD (GDP,1) OVER (ORDER BY `year`))-GDP) / GDP ) * 100,2) GDP_growth
+FROM economies
+WHERE GDP is not NULL;
