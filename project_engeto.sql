@@ -1,7 +1,8 @@
 
 
 -- Rostou v průběhu let mzdy ve všech odvětvích?
-SELECT
+
+/* SELECT
 	cp.value, 
 	cp.payroll_year,
 	cp.industry_branch_code,
@@ -18,12 +19,42 @@ GROUP BY
 	cp.industry_branch_code
 ORDER BY
 	cp.industry_branch_code,
-	cp.payroll_year;
+	cp.payroll_year;*/
 	
+
+CREATE OR REPLACE VIEW 
+	v_czechia_payroll_total_growth_per_years_with_branch AS 
+SELECT 
+	value,
+	payroll_year,
+	industry_branch_code,
+	name1
+FROM 
+	t_martin_peschout_project_sql_primary_final
+WHERE 
+	value_type_code = 5958 AND industry_branch_code IS NOT NULL
+GROUP BY 
+	payroll_year,
+	industry_branch_code
+ORDER BY 
+	industry_branch_code,
+	payroll_year;
+
+
+SELECT 
+	payroll_year,
+	industry_branch_code,
+	name1,
+	value,
+	LEAD (value,1) OVER (PARTITION BY industry_branch_code ORDER BY industry_branch_code, payroll_year) next_value,
+	round ((((LEAD (value,1) OVER (PARTITION BY industry_branch_code ORDER BY industry_branch_code, payroll_year)) - value) / value) * 100,2) payroll_growth
+FROM
+	v_czechia_payroll_total_growth_per_years_with_branch;
+
+
 -- Kolik je možné si koupit litrů mléka a kilogramů chleba za první a poslední srovnatelné období v dostupných datech cen a mezd?
 
-CREATE OR REPLACE VIEW v_czechia_price_category_special_category_code AS
-SELECT 
+/* SELECT 
 		cp.category_code,
 		cpc.name,
 		cp.value,
@@ -41,28 +72,44 @@ SELECT
 		cp.region_code IS NULL AND
 		cp.category_code IN (111301,114201)
 	GROUP BY YEAR (cp.date_from), cpc.name
-	ORDER BY name, cp.date_from DESC
+	ORDER BY name, cp.date_from DESC */
 
+	CREATE OR REPLACE VIEW v_czechia_price_category_special_category_code AS
+	SELECT 
+		category_code,
+		name,
+		value1,
+		price_unit,
+		YEAR (date_from) YEAR1
+	FROM 
+		t_martin_peschout_project_sql_primary_final 
+	WHERE region_code IS NULL AND
+		category_code IN (111301,114201)
+	GROUP BY YEAR (date_from), name
+	ORDER BY name, date_from DESC;
+	
 SELECT 
 	czp.payroll_year Observed_year,
 	cpc.category_code Goods,
 	cpc.name Name_of_goods,
 	czp.value Salary,
-	cpc.average Average_price_good,
-	round(czp.value / cpc.average,0) Quantity_per_salary
+	cpc.value1,
+	round(czp.value / cpc.value1,0) Quantity_per_salary,
+	cpc.price_unit,
 FROM
 	czechia_payroll czp
 JOIN v_czechia_price_category_special_category_code cpc
 ON
-	czp.payroll_year = cpc.`YEAR (cp.date_from)` 
+	czp.payroll_year  = cpc.YEAR1 
 WHERE
 	czp.value_type_code  = 5958 AND
 	czp.payroll_year IN (2006,2018)
 GROUP BY czp.payroll_year, cpc.name;
 
+
 -- Která kategorie potravin zdražuje nejpomaleji (je u ní nejnižší percentuální meziroční nárůst)?
 
-CREATE OR REPLACE VIEW v_czechia_price_avg_price_per_year AS
+/* CREATE OR REPLACE VIEW v_czechia_price_avg_price_per_year AS
 	SELECT 
 		category_code,
 		AVG (value), 
@@ -70,54 +117,28 @@ CREATE OR REPLACE VIEW v_czechia_price_avg_price_per_year AS
 	FROM 
 		czechia_price
 	GROUP BY 
-		YEAR (date_from), category_code;
-
-SELECT
-		cp1.category_code,
-		cp1.`YEAR (date_from)`  year_basic,
-		cp2.`YEAR (date_from)`,
-		cp2.`YEAR (date_from)` + 1 year_prev,
-		cp1.`AVG (value)`,
-		cp2.`AVG (value)`,
-		round ((cp1.`AVG (value)` - cp2.`AVG (value)`)/cp2.`AVG (value)`*100, 2) price_growth
-	FROM 
-		v_czechia_price_avg_price_per_year cp1
-	JOIN 
-		v_czechia_price_avg_price_per_year cp2
-		ON cp1.category_code  = cp2.category_code 
-			AND cp1.`YEAR (date_from)` = cp2.`YEAR (date_from)` + 1
-	GROUP BY category_code , `YEAR (date_from)`;
+		YEAR (date_from), category_code; */
 	
-CREATE OR REPLACE VIEW v_czechia_price_comparison_growth_per_code AS	
-SELECT
-		cp1.category_code code,
-		cp1.`YEAR (date_from)`  year_basic,
-		cp2.`YEAR (date_from)` start_year,
-		cp2.`YEAR (date_from)` + 1 year_prev,
-		cp1.`AVG (value)` AVG1,
-		cp2.`AVG (value)` AVG2,
-		round ((cp1.`AVG (value)` - cp2.`AVG (value)`)/cp2.`AVG (value)`*100, 2) price_growth
-		FROM 
-			v_czechia_price_avg_price_per_year cp1
-		JOIN 
-			v_czechia_price_avg_price_per_year cp2
-			ON cp1.category_code  = cp2.category_code 
-				AND cp1.`YEAR (date_from)` = cp2.`YEAR (date_from)` + 1
-		GROUP BY 
-			code, year_basic
+	CREATE OR REPLACE VIEW v_czechia_price_avg_price_per_year AS
+	SELECT 
+		YEAR (date_from),
+		category_code,
+		name,
+		value1,
+		LEAD (value1,1) OVER (PARTITION BY category_code ORDER BY category_code, YEAR (date_from)) next_value,
+		round ((((LEAD (value1,1) OVER (PARTITION BY category_code  ORDER BY category_code, YEAR (date_from))) - value1) / value1) * 100,2) price_growth
+	FROM 
+		t_martin_peschout_project_sql_primary_final
+	WHERE region_code IS NULL
+	GROUP BY 
+		 category_code, YEAR (date_from);
 			
-SELECT 
-	cpg.code code_product,
-	cpc.name name_product,
-	SUM(price_growth) sum_growth
+SELECT category_code, name, SUM (price_growth), AVG (price_growth)
 FROM 
-	v_czechia_price_comparison_growth_per_code cpg
-JOIN 
-	czechia_price_category cpc
-ON 
- 	cpg.code = cpc.code
-GROUP BY cpg.code
-ORDER BY sum_growth;
+	v_czechia_price_avg_price_per_year
+GROUP BY category_code
+ORDER BY AVG (price_growth);
+
 		
 -- Existuje rok, ve kterém byl meziroční nárůst cen potravin výrazně vyšší než růst mezd (větší než 10 %)?
 
