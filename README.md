@@ -1,8 +1,8 @@
-\# Komentář k projektu \#
+#Komentář k projektu#
 
 Projekt jsem začal tím, že jsem si prošel všechny tabulky, o kterých byla zmínka v zadání projektu a snažil se pochopit údaje obsažené v jednotlivých sloupcích v každé z nich. Stanovil jsem si postup, že vytvořím jednotlivé query pro odpovědi na zadané otázky a na konec, na základě údajů, které budu potřebovat v těchto jednotlivých dotazích vytvořím konečné tabulky, které měly být součástí projektu. Následně poté, co jsem si opět prohlédl videa se záznamu jsem pochopil že postup měl být opačný, tj. prvně tabulky a z nich získat pomocí query podklady pro odpovědi na zadané otázky. Přepracoval jsem tedy projekt dle tohoto zadání.
 
-1.  \#\#Tvorba tabulky t_{jmeno}_{prijmeni}_project_SQL_primary_final\#\#
+1.  #Tvorba tabulky t_{jmeno}_{prijmeni}_project_SQL_primary_final#
 
     V rámci tohoto úkolu jsem pospojoval tabulky \*czechia_price\*, \*czechia_payroll\*, \*czechia_payroll_industry_branch\* a \*czechia_price_category\* do jedné tabulky, z které jsem následně získával údaje pro ověření zadaných hypotéz. Tvorba tabulky trvala 2m32s, což s ohledem na mé zkušenosti nedokáži odhadnout, zdali je potřeba tvorbu tabulky optimalizovat či nikoliv.
 
