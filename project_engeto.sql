@@ -30,6 +30,7 @@ LEFT JOIN
 ON 
   	cp.category_code = cpc.code;
   
+  
 /* ------------------------------------------------------------------------------------------------------------------------------------------------------*/
   
 /* t_martin_peschout_project_SQL_secondary_final (pro dodatečná data o dalších evropských státech) */
@@ -53,8 +54,7 @@ ORDER BY
 
 -- Rostou v průběhu let mzdy ve všech odvětvích?
 
-CREATE OR REPLACE VIEW 
-	v_czechia_payroll_total_growth_per_years_with_branch AS 
+CREATE OR REPLACE VIEW v_czechia_payroll_total_growth_per_years_with_branch AS 
 SELECT 
 	value,
 	payroll_year,
@@ -80,6 +80,7 @@ SELECT
 	round ((((LEAD (value,1) OVER (PARTITION BY industry_branch_code ORDER BY industry_branch_code, payroll_year)) - value) / value) * 100,2) payroll_growth
 FROM
 	v_czechia_payroll_total_growth_per_years_with_branch;
+
 
 /* ------------------------------------------------------------------------------------------------------------------------------------------------------*/
 
@@ -108,8 +109,8 @@ SELECT
 	cpc.name Name_of_goods,
 	czp.value Salary,
 	cpc.value1,
-	round(czp.value / cpc.value1,0) Quantity_per_salary,
-	cpc.price_unit,
+	ROUND (czp.value / cpc.value1,0) Quantity_per_salary,
+	cpc.price_unit
 FROM
 	czechia_payroll czp
 JOIN 
